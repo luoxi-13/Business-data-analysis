@@ -1,155 +1,291 @@
-# 📊 Olist 巴西电商商业数据分析项目
+# 基于 Olist 电商数据的用户价值与履约时效分析
 
-> 基于 Kaggle Olist Brazilian E-Commerce Dataset 的商业数据分析大作业：数据清洗、RFM 用户价值分析、帕累托 ABC 分类、SARIMA 时间序列预测、12 种可视化模板复现、7 张业务模型图与 Pyecharts 交互式大屏（全 Python 实现）。
+《商业数据分析》期末大作业。数据是 Kaggle 公开的 Olist 巴西电商数据集（2016-09 至 2018-08，96,478 条已送达订单），用 RFM、帕累托/ABC、SARIMA 三个模型分别回答三个问题：谁值得投钱、卖什么最赚钱、下个月能卖多少。结论最后做成了一屏能点的 Pyecharts 大屏。
 
-**作者**：王京京 ｜ **学号**：2024459985210 ｜ **学院**：数据科学学院 大数据242 ｜ **完成日期**：2026-10-29
+王京京　数据科学学院 大数据242　2024459985210　2026-10-29
 
 ---
 
-## 📋 数据来源合规声明
+## 先看结论
+
+**客户分层很清楚，但高价值的人太少。** 93,358 个客户里，复购频次的中位数是 1——绝大多数人只买过一次。消费金额高于中位数的那批客户撑起了大部分销售额：其中人数占 24.1% 的"重要发展客户"贡献 38.2%，"重要挽留客户"再贡献 37.1%。而平均消费 R$343.41（约为平台平均客单价的两倍）的重要价值客户只有 1,379 人，占 1.5%，销售额占 3.1%。不是没有高价值客户，是高价值客户太少、还几乎不回头。
+
+**货也在少数品类里。** 18 个 A 类品类占品类数的 25%，贡献 81.3% 的销售额（约 1,254 万雷亚尔）；46 个 C 类品类占了 63.9% 的数量，加起来只有 9.1%。
+
+**差评几乎都跟迟到有关。** 93.2% 的订单按时或提前送达，平均提前 11.87 天；剩下 6.8% 的延迟订单平均超期 10.6 天，评分只有 2.2 分，而按时送达的是 4.3 分。运费占比和评分的相关系数只有 −0.025，基本不相关——客户在意的不是运费贵，是付了钱没按时到。
+
+一句话：这家平台不缺流量，缺的是把存量客户、品类结构和履约尾部管细的能力。下面是支撑这三句话的图。
+
+---
+
+## 数据
 
 | 项目 | 说明 |
-|------|------|
-| 数据集名称 | Olist Brazilian E-Commerce Public Dataset |
-| 数据来源 | [Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) |
-| 获取方式 | Kaggle 官方公开数据文件（CSV），**非爬虫获取** |
-| 下载日期 | 2026年10月24日 |
-| 许可证 | CC BY-NC-SA 4.0（仅供学术研究使用） |
-| 合规声明 | 本项目严格遵守数据使用协议，仅用于教学与研究目的，未使用任何网络爬虫技术（Scrapy/Selenium/requests 等） |
+|---|---|
+| 数据集 | Olist Brazilian E-Commerce Public Dataset |
+| 来源 | [Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)，官方 CSV 下载（2026-10-24），未使用爬虫 |
+| 许可证 | CC BY-NC-SA 4.0，仅用于教学与研究 |
+| 规模 | 9 张表、99,441 条订单，清洗后保留已送达订单 96,478 条 × 41 列 |
+| 派生字段 | 延迟天数、履约时长、运费占比 |
+
+清洗以订单主表为核心做七表左连接，只保留 `order_status = delivered`；缺失评分填 0、类别填 unknown、产品属性取中位数；配送时长为负或超过 90 天的记录剔除。结果导出为 `data/clean/olist_master_clean.csv`，后面所有图和模型都从这一份主表算起。
+
+> 仓库里**不含**这两个目录下的 CSV（原始表 121 MB、清洗表 51 MB，GitHub 收不了），拉下来后按「[数据文件没传上来](#数据文件没传上来)」一节补上即可，清洗表会自动重新生成。
 
 ---
 
-## 🗂 项目结构
+## 模型与结果
 
-```
-Olist_Business_Analysis/              # 项目根目录
-├── Olist_Business_Analysis.ipynb     # 核心分析笔记本（含代码、图表与业务解读）
-├── run_all.py                        # 一键复现入口脚本（由 Notebook 导出）
-├── requirements.txt                  # Python 依赖库列表
-├── README.md                         # 项目简介、数据来源、复现步骤与图表索引
-├── 《商业数据分析》期末大作业.docx     # 最终报告文档
-│
-├── data/                             # 数据文件夹
-│   ├── raw/                          # 9张原始 CSV 表
-│   └── clean/                        # 清洗后的主表 (olist_master_clean.csv)
-│
-├── outputs/                          # 输出结果文件夹
-│   ├── figures/                      # 自动生成的分析图表
-│   │   ├── fig01-fig09 (业务模型图)
-│   │   └── template/T01-T12 (12种可视化模板复现)
-│   └── tables/                       # RFM/ABC 结果表 (CSV)
-│
-├── scripts/                          # 辅助脚本与静态资源
-│   ├── run_all.py                    # 一键复现入口
-│   └── echarts.min.js                # 大屏所需的 ECharts 库文件
-│
-└── docs/                             # 文档说明
-```
+### 用户价值：RFM
+
+R、F、M 三个维度按中位数打分，先画成 R×M 矩阵。颜色越深人数越多——四个象限几乎是均分的（24.4%–25.6%），这正是用中位数切分的结果：没有天然的"低价值大多数"，分层要靠后面的八分类继续往下切。
+
+<img src="outputs/figures/models/M01_rfm_matrix.png" width="720">
+
+*图 5-16　RFM 矩阵（R×M 视角）：左上角 R 好、M 好的象限人数最多，颜色越红人数占比越高*
+
+八分类之后再并排看人数占比和销售额贡献，结构就出来了：1,379 名重要价值客户（1.5%）人均消费 R$343.41，是平台平均的两倍，但人数太少，销售额只占 3.1%；真正扛销量的是人数占 24.1% 的重要发展客户（38.2%）和 23.2% 的重要挽留客户（37.1%）——两群人加起来撑起四分之三的销售额。
+
+<img src="outputs/figures/models/M02_rfm_structure.png" width="860">
+
+*图 5-17　客群结构双图：左边是人数占比，右边是销售额占比，两边的排序对不上，就是运营的机会所在*
+
+把全部客户按购买频次 × 消费金额铺成散点，各组的位置一目了然：紫色和绿色两大团挤在 F=1 的柱子上，金额拖出一条长尾；散落在右侧的那些孤点就是复购客户，最远的一个买了 15 次。
+
+<img src="outputs/figures/fig04_rfm_scatter.png" width="860">
+
+*图 4-1　RFM 用户分群散点图：F=1 的两大团是运营主战场，右侧孤点是复购样本*
+
+### 商品结构：帕累托 / ABC
+
+品类销售额从高到低累加，切出 A（0–80%）、B（80–90%）、C（90–100%）三段。柱子和累计曲线的距离越拉越大，就是长尾在变长。
+
+<img src="outputs/figures/fig05_pareto_category.png" width="880">
+
+*图 4-2　帕累托 / ABC 分类图：柱形是单个品类销售额，绿线是累计占比，两条虚线卡在 80% 和 90%*
+
+从数量看更刺眼：18 个 A 类占品类总数的 25%，拿走 81.3% 的销售额；46 个 C 类占了 63.9% 的数量，加起来只剩 9.1%。
+
+<img src="outputs/figures/models/M03_abc_composition.png" width="760">
+
+*图 5-18　ABC 分类构成：左边品类数量占比，右边销售额占比，两边对着看差距就出来了*
+
+分类结果直接翻译成动作，就是下面这张四象限图。A 类保现货、B 类按需补、C 类下架或按单采购——库存策略的差别比分析本身更值钱。
+
+<img src="outputs/figures/models/M04_abc_strategy_matrix.png" width="720">
+
+*图 5-19　ABC 库存策略矩阵：从"卖得好不好"到"该怎么备货"*
+
+### 销售预测：SARIMA
+
+先用季节分解把月销售额拆成趋势、季节、残差三层。季节项在 2017 年 11 月出现最大的正向偏离（黑五），3—4 月和 6—7 月是淡季；样本里只有一个完整年度周期，这一点直接决定了后面模型的误差水平。
+
+<img src="outputs/figures/models/M05_sarima_decompose.png" width="860">
+
+*图 5-20　序列分解：趋势项一路上行，季节项的峰值落在 2017 年 11 月*
+
+网格搜索 AIC 之后选的是 SARIMA(0,1,0)×(0,1,1,12)。拿最后 3 个月（2018 年 5–7 月）做回测，MAPE 21.67%、RMSE 约 23.07 万雷亚尔，三个月误差在 +16% 到 +27.3% 之间——全是高估，不是随机抖动。
+
+<img src="outputs/figures/models/M06_sarima_backtest.png" width="820">
+
+*图 5-21　回测对比：蓝线是历史实际，红方块是模型预测，绿点是回测期的真实值，标题里标了每个月的误差*
+
+预测 2018 年 8–10 月，9 月点预测 1,162,670 雷亚尔，95% 区间 [896,350, 1,428,990]。区间比点位更有用——下界用来锁采购资金，上界用来排临时人力。
+
+<img src="outputs/figures/models/M07_sarima_forecast_ci.png" width="840">
+
+*图 5-22　95% 置信区间预测：越往后带宽越宽，符合时序预测的规律*
+
+把历史、回测、预测三段画在同一张图上，模型的脾气就看清了：蓝线是真实销售额，绿段是回测期的拟合，红段是未来三个月，两段阴影是各自的置信区间。回测那三个绿点全都压在蓝线上方 1.2–1.3 百万的位置，而实际只有 1.01–1.13 百万——高估是系统性的，用的时候得往下打折。
+
+<img src="outputs/figures/fig06_sarima_forecast.png" width="880">
+
+*图 4-3　月度销售额预测总图：历史 / 回测 / 未来三段拼接，标题标注 MAPE=21.67%、RMSE=230,650*
 
 ---
 
-## 🚀 快速开始
+## 图表
 
-### 1. 安装依赖
+论文一共 30 张图：第 4 章的 3 张（RFM 散点、帕累托、SARIMA 预测，上一节已经贴过），第 5 章的 27 张——探索性分析 3 张、图表模板 12 张、业务模型图 7 张、大屏截图 5 张。按顺序过一遍。
+
+### 探索性分析
+
+订单量两年翻了两个数量级。2017 年 11 月黑五冲到 7,289 单的峰值，2018 年起进入 6,100–7,100 单的平台期，不再大起大落。
+
+<img src="outputs/figures/fig01_monthly_orders.png" width="860">
+
+*图 5-1　每月订单量：2017-11 的尖峰就是黑五，之后是一段稳定的高位平台期*
+
+品类份额比较平，头部五个加起来 39.2%，第一名健康美容 9.1%，没有哪个品类能单独撑起平台，这也是为什么后面要做品类分群而不是押爆款。
+
+<img src="outputs/figures/fig02_category_sales_share.png" width="700">
+
+*图 5-2　类别销售额占比：Top10 合计 62.4%，分布相当平均*
+
+延迟分布的均值是 −11.87 天，也就是说平均提前 12 天送达。但右侧那条尾巴拖到 30 天以上，这就是客诉的来源。
+
+<img src="outputs/figures/fig03_delivery_delay_dist.png" width="840">
+
+*图 5-3　延迟天数分布：主体在 −20 至 0 天，长尾才是要管的部分*
+
+### 12 种图表模板
+
+对照《Excel 数据可视化》教材复现的，从折线到双轴组合一共 12 种，超过作业要求的 10 种。每个模板都不是随手画，而是对应一种数据关系：时间序列用折线面积、类别排序用条形、构成用饼和环、相关用散点、分布用直方和箱线、多维比较用气泡和热力。
+
+| | | |
+|---|---|---|
+| <img src="outputs/figures/template/T01_line_monthly_orders.png" width="260"> | <img src="outputs/figures/template/T02_area_cumulative_sales.png" width="260"> | <img src="outputs/figures/template/T03_column_state_orders.png" width="260"> |
+| T01 折线　每月订单量 | T02 面积　月销售额 | T03 柱形　各州订单量 |
+| <img src="outputs/figures/template/T04_bar_top10_category.png" width="260"> | <img src="outputs/figures/template/T05_pie_payment_type.png" width="260"> | <img src="outputs/figures/template/T06_donut_review_score.png" width="260"> |
+| T04 条形　类别销售额 | T05 饼图　支付方式 | T06 环形　评分分布 |
+| <img src="outputs/figures/template/T07_scatter_freight_review.png" width="260"> | <img src="outputs/figures/template/T08_bubble_state.png" width="260"> | <img src="outputs/figures/template/T09_hist_delivery_duration.png" width="260"> |
+| T07 散点　运费占比 vs 评分 | T08 气泡　州订单-客单价-销售额 | T09 直方　配送时长 |
+| <img src="outputs/figures/template/T10_box_score_duration.png" width="260"> | <img src="outputs/figures/template/T11_heatmap_corr.png" width="260"> | <img src="outputs/figures/template/T12_combo_sales_review.png" width="260"> |
+| T10 箱线　各评分配送时长 | T11 热力　指标相关矩阵 | T12 双轴　销售额 × 评分 |
+
+这几张里信息量最大的是 T10 和 T11。箱线图按评分分组看配送时长，5 星中位数 9 天、1 星 16 天，上四分位 29 天；热力图里和评分负相关最强的也是配送时长（−0.332），其次是延迟天数（−0.267）。
+
+<img src="outputs/figures/template/T10_box_score_duration.png" width="700">
+
+*图 5-13　箱线图：评分越低，箱子越长、位置越高*
+
+<img src="outputs/figures/template/T11_heatmap_corr.png" width="620">
+
+*图 5-14　相关矩阵：金额、运费、件数之间强相关，与评分几乎无关*
+
+### 交互大屏
+
+`outputs/dashboard.html` 是用 Pyecharts 搭的，10 个页签。ECharts 已经内联进 HTML（2 MB），不联网、不起服务，双击就能开。
+
+第一个页签是使用说明，把三步上手和三级联动写在明面上，省得别人打开大屏先愣住。
+
+<img src="outputs/figures/dashboard_screenshot/dash_guide.png" width="800">
+
+*使用说明页：三步上手 + 三级联动规则（论文里没占图号）*
+
+首页做成了四图同屏的驾驶舱，一屏回答四个问题：卖得怎么样、卖到哪里、怎么付的钱、客户满不满意。
+
+<img src="outputs/figures/dashboard_screenshot/dash_cockpit.png" width="780">
+
+*图 5-23　驾驶舱总览：月度趋势 / 各州 Top5 / 支付占比 / 评分分布*
+
+点进单个页签，交互分三层：年份时间轴切换（2016、2017、2018、全部，数据在 Python 端预先聚合好，切的时候没有延迟）；点州柱条触发 click 事件，把选中的州写进全局状态，给其他图做下钻；再往下就是 Tooltip、DataZoom 缩放和散点的 VisualMap 配色。
+
+| | |
+|---|---|
+| <img src="outputs/figures/dashboard_screenshot/dash_overview.png" width="400"> | <img src="outputs/figures/dashboard_screenshot/dash_state.png" width="400"> |
+| KPI 指标卡：订单 / 销售额 / 准时率 / 评分 | 各州销售额 Top10，内嵌年份 Timeline |
+| <img src="outputs/figures/dashboard_screenshot/dash_month.png" width="400"> | <img src="outputs/figures/dashboard_screenshot/dash_scatter.png" width="400"> |
+| 月度趋势，底部 DataZoom 可拖时间窗 | 延迟 × 评分散点，VisualMap 红黄绿映射 |
+| <img src="outputs/figures/dashboard_screenshot/dash_category.png" width="400"> | <img src="outputs/figures/dashboard_screenshot/dash_payment.png" width="400"> |
+| 类别销售额 Top10，健康美容 1.41 百万居首 | 支付方式，信用卡 76.64%、boleto 19.89% |
+| <img src="outputs/figures/dashboard_screenshot/dash_duration.png" width="400"> | <img src="outputs/figures/dashboard_screenshot/dash_score.png" width="400"> |
+| 配送时长分布，6–10 天最集中（32,855 单） | 评分分布，5 星接近六成 |
+
+散点那张值得多看两眼：评分 5 分的绿点在延迟 0 天左侧连成一条实线，越过 0 天明显变稀，而 1–2 分的红橙点一直铺到 +25 天——相关性是 −0.267，方向很清楚，只是没有想象的那么"断崖"。这一页底部同样带年份 Timeline。
+
+页签清单：
+
+| 页签 | 内容 |
+|---|---|
+| 使用说明 | 三步上手指引 + 联动说明 |
+| 驾驶舱总览 | Grid 四图同屏 |
+| KPI 总览 | 总订单 96,478 / 总销售额 R$15.4M / 准时率 93.2% / 平均评分 4.16 |
+| 各州销售额 Top10 | 横向柱状，可点击下钻 |
+| 类别销售额 Top10 | 横向条形 |
+| 支付方式占比 | 饼图，信用卡 76.6%、boleto 19.9% |
+| 月度销售额趋势 | 面积折线 + DataZoom |
+| 客户评分分布 | 环形图，5 星 58.2%、1 星 9.8% |
+| 配送时长分布 | 直方图，中位数 10 天 |
+| 延迟 × 评分散点 | VisualMap 红黄绿 |
+
+---
+
+## 目录
+
+```
+Olist_Business_Analysis/                # 项目根目录
+├── Olist_Business_Analysis.ipynb       # 核心分析笔记本（含代码、图表与业务解读）
+├── run_all.py                          # 一键复现入口脚本（转调 scripts/run_all.py）
+├── requirements.txt                    # Python 依赖库列表
+├── .gitignore                          # 排除 data 下的大 CSV 与临时文件
+├── README.md                           # 项目简介、数据来源、复现步骤与图表索引
+├── 《商业数据分析》期末大作业.docx       # 最终报告文档
+│
+├── data/                               # 数据文件夹
+│   ├── raw/                            # 9 张原始 CSV 表（未入库，见下节）
+│   └── clean/                          # 清洗后的主表 olist_master_clean.csv（未入库）
+│
+├── outputs/                            # 输出结果文件夹
+│   ├── dashboard.html                  # 交互大屏，ECharts 已内联，双击即可打开
+│   ├── figures/                        # 自动生成的分析图表
+│   │   ├── fig01–fig06                 # 第 4 章核心图（趋势/占比/延迟/RFM/帕累托/预测）
+│   │   ├── models/M01–M07              # 业务模型图（RFM 2 张、ABC 2 张、SARIMA 3 张）
+│   │   ├── template/T01–T12            # 12 种可视化模板复现
+│   │   └── dashboard_screenshot/       # 大屏 10 个页签截图
+│   └── tables/                         # RFM / ABC 结果表（CSV）
+│       ├── rfm_summary.csv             # RFM 八分类汇总（客户数、平均 R/F/M）
+│       └── abc_classification.csv      # ABC 分类明细（品类、销售额、累计占比）
+│
+├── scripts/                            # 辅助脚本与静态资源
+│   ├── run_all.py                      # 一键复现入口（由 Notebook 导出）
+│   └── echarts.min.js                  # 大屏所需的 ECharts 库文件
+│
+└── docs/                               # 文档说明（预留，放答辩提纲、补充材料）
+```
+
+## 数据文件没传上来
+
+`data/` 下的 CSV 全部没进 Git，不是漏了，是放不上去：
+
+| 目录 | 内容 | 体积 |
+|---|---|---|
+| `data/raw/` | 9 张原始表，最大的是 `olist_geolocation_dataset.csv`（61 MB） | 121 MB |
+| `data/clean/` | 清洗后的主表 `olist_master_clean.csv` | 51 MB |
+
+单文件超过 100 MB 会被 GitHub 直接拒收，仓库总体积超过 1 GB 也会被警告，全部传上去还会让 clone 变得极慢。所以 `.gitignore` 里排掉了 `data/raw/*.csv` 和 `data/clean/*.csv`，只留 `.gitkeep` 占位，目录结构仍然完整。
+
+**拿到数据只要两步**：
+
+1. 去 [Kaggle 数据集页](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) 下载，把 9 个 CSV 解压到 `data/raw/`，文件名保持原样（`olist_orders_dataset.csv` 这一套）。
+2. 清洗表不用手动做——打开笔记本从第 2 步跑起，会自动生成 `data/clean/olist_master_clean.csv`；也可以直接 `python run_all.py`，一次跑完。
+
+命令行下载（需要先配好 Kaggle API token）：
+
+```bash
+kaggle datasets download -d olistbr/brazilian-ecommerce -p data/raw --unzip
+```
+
+`outputs/` 里的东西都是跑出来的产物，仓库里留着是为了不跑代码也能看图：`dashboard.html`、30 张分析图、RFM/ABC 结果表都在，重新运行会原地覆盖。
+
+推送的时候不用手动挑文件，`.gitignore` 已经排好了，实际只传约 13 MB：
+
+```bash
+git add .
+git commit -m "Olist 电商数据分析：RFM / ABC / SARIMA + Pyecharts 大屏"
+git branch -M main
+git remote add origin https://github.com/<你的用户名>/Olist_Business_Analysis.git
+git push -u origin main
+```
+
+## 怎么跑
+
+装依赖：
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 运行主笔记本（推荐）
+再打开 `Olist_Business_Analysis.ipynb`，`Restart & Run All`，从清洗一路跑到大屏，大约十几分钟（SARIMA 网格搜索最慢）。不想开 Notebook 的话执行 `python run_all.py`（或 `python scripts/run_all.py`）也行，内容一样。
 
-用 Jupyter Notebook / JupyterLab 打开 `Olist_Business_Analysis.ipynb`，
-`Kernel → Restart & Run All` 一键复现全部结果（数据清洗 → EDA → 三大模型 → 12 种模板复现 → 7 张模型图 → Pyecharts 大屏）。也可直接查看已执行的输出。
+注意：**`data/raw/` 里没有 CSV 的话第一步就会报错**，先按上一节把数据放进去。
 
-### 3. 脚本方式一键复现
+看大屏直接双击 `outputs/dashboard.html`。要重新生成就在笔记本最后一个 cell 跑完，文件会覆盖到同一个位置。
 
-```bash
-python scripts/run_all.py
-```
+依赖：pandas、numpy、matplotlib、seaborn、statsmodels、pyecharts，Python 3.10 以上。中文字体依赖系统的 SimHei 或 Microsoft YaHei，Linux 上要单独装字体，否则图上全是方块。
 
-依次执行：数据清洗 → EDA 图表 → 三大模型与结果表。
+## 两点说明
 
-### 4. 查看交互式大屏
+论文里 SARIMA 只用 19 个月训练，不到两个完整年度，季节因子估得不够准，MAPE 21.67% 偏高。这一点写在论文的局限性里了——引入 XGBoost 或者把促销日历当外生变量，应该还能往下压。
 
-```bash
-# 方式一：直接用浏览器打开已生成的大屏文件
-outputs/dashboard.html
-
-# 方式二：重新生成（在主笔记本最后一个 cell 运行后自动输出）
-# 方式三：Streamlit 备选大屏
-streamlit run scripts/04_dashboard.py
-```
-
----
-
-## 📈 核心成果
-
-### 商业分析模型（第4章）
-
-| 模型 | 关键参数 | 核心结论 | 对应模型图 |
-|------|----------|----------|------------|
-| RFM 用户价值分析 | 中位数阈值八分类 | 1,379 名"重要价值客户"（1.5%）贡献约 12% 销售额，平均消费 R$343.41 | M01、M02 |
-| 帕累托/ABC 分类 | 80/20 原则切分 | 18 个 A 类（25%）贡献 81.3% 销售额；46 个 C 类（63.9%）仅贡献 9.1% | M03、M04 |
-| SARIMA 预测 | (0,1,0)×(0,1,1,12)，AIC 网格搜索 | 回测 MAPE=21.67%，RMSE=R$230,650；预测 2018 年 8–10 月月均约 R$1.16M | M05–M07 |
-
-### 可视化成果（第5章）
-
-| 板块 | 数量 | 说明 | 输出位置 |
-|------|------|------|----------|
-| EDA 分析图 | 3 张 | 订单趋势 / 类别占比 / 延迟分布 | `fig01–fig03` |
-| 5.2 模板复现 | **12 种** | 对照《Excel数据可视化》：折线、面积、柱形、条形、饼图、环形、散点、气泡、直方、箱线、热力、双轴组合 | `template/T01–T12` |
-| 5.3 业务模型图 | **7 张** | 与第4章 RFM/ABC/SARIMA 一一对应 | `models/M01–M07` |
-| 5.4 交互大屏 | **9 组件** | Pyecharts 全 Python 实现，三级联动 | `dashboard.html` + 8 张截图 |
-
-### 交互大屏结构（10 个页签，全 Python 实现）
-
-| 页签 | 内容 |
-|------|------|
-| 使用说明 | 三步上手指引 + 三级联动说明 |
-| **驾驶舱总览** | Grid 四图同屏：月度销售额趋势 / 各州销售额 Top5 / 支付方式占比 / 客户评分分布 |
-| KPI 指标卡 | 总订单数 / 总销售额 / 准时率 / 平均评分 |
-| 各州销售额 Top10 | 横向柱状图，支持点击联动 |
-| 类别销售额 Top10 | 横向条形图 |
-| 支付方式占比 | 饼图 |
-| 月度销售额趋势 | 面积折线图 + DataZoom 缩放 |
-| 客户评分分布 | 环形图 |
-| 配送时长分布 | 直方图 |
-| 延迟×评分散点 | 散点图，VisualMap 红黄绿映射 |
-
-> `dashboard.html` 约 2MB，ECharts 已内联，**双击即可离线打开**。
-
-### 交互大屏联动机制（三级）
-
-1. **① 年份 Timeline 时间轴联动**：7 个图表组件均内嵌"2016/2017/2018/全部"时间轴，点击即切换该年份重新聚合的数据（Python 层预聚合 4 套数据集，零延迟）；
-2. **② 州柱状图 JS click 二级联动**：点击州柱条触发 ECharts click 事件，写入 `window.__selectedState` 全局状态（事件总线），支持其他图表订阅下钻；
-3. **③ 悬浮与缩放交互**：全组件 Tooltip 悬浮详情、月趋势页 DataZoom 时间窗缩放、散点页 VisualMap 按评分红黄绿映射。
-
-> 未使用 Power BI / Tableau，全流程 Python 实现。
-
----
-
-## 🔑 关键发现
-
-- **93.2%** 订单准时或提前送达（平均提前 11.87 天），但 **6.8%** 延迟订单平均延迟超 15 天，评分仅 2.8 分（整体 4.1 分）——物流时效是满意度首要因素；
-- 平台复购率极低（F 中位数 = 1），1.5% 高价值客户是核心利润源，LTV 挖掘空间大；
-- 25% 的 A 类产品是平台"现金牛"，63.9% 的 C 类长尾 SKU 仅贡献 9.1% 销售额，存在明显优化空间。
-
----
-
-## 🔧 技术栈
-
-- **数据处理**：Pandas, NumPy
-- **可视化**：Matplotlib, Seaborn, Plotly, **Pyecharts 2.1.0**（大屏）
-- **统计建模**：Statsmodels（SARIMAX / seasonal_decompose）
-- **交互**：ipywidgets（笔记本内联动）、ECharts Timeline/事件总线（大屏联动）
-- **Python 版本**：3.10+
-
----
-
-## ⚠️ 注意事项
-
-1. 原始数据（9 个 CSV）需放置于 `data/raw/` 目录下；
-2. 图表中文显示依赖系统字体（SimHei / Microsoft YaHei），Linux 需额外配置字体；
-3. SARIMA 训练数据仅 19 个月，季节效应估计不充分，MAPE 约 21.67%（详见论文 7.2 局限性）；
-4. `outputs/dashboard.html` 为自包含 HTML（ECharts JS 已内联），离线可直接打开；
-5. AI 使用披露：AI 编程助手仅辅助代码框架生成，核心业务逻辑、模型选型与商业结论由作者独立完成（详见论文第 7.3 节）。
+代码框架用了 AI 编程助手（Claude Code）辅助，主要是 Pyecharts 的 Timeline 联动和多图 Grid 布局那部分；模型选型、阈值设定和商业结论是自己做的，论文 7.3 节有披露。
