@@ -206,11 +206,10 @@ R、F、M 三个维度按中位数打分，先画成 R×M 矩阵。颜色越深�
 ```
 Olist_Business_Analysis/                # 项目根目录
 ├── Olist_Business_Analysis.ipynb       # 核心分析笔记本（含代码、图表与业务解读）
-├── run_all.py                          # 一键复现入口脚本（转调 scripts/run_all.py）
+├── run_all.py                          # 一键复现入口脚本
 ├── requirements.txt                    # Python 依赖库列表
-├── .gitignore                          # 排除 data 下的大 CSV 与临时文件
 ├── README.md                           # 项目简介、数据来源、复现步骤与图表索引
-├── 《商业数据分析》期末大作业.docx       # 最终报告文档
+├── 《商业数据分析》期末大作业.pdf       # 最终报告文档
 │
 ├── data/                               # 数据文件夹
 │   ├── raw/                            # 9 张原始 CSV 表（未入库，见下节）
