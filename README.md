@@ -22,44 +22,28 @@
 ## 🗂 项目结构
 
 ```
-Olist_Project/
-├── Olist_Business_Analysis.ipynb   # ★ 主笔记本（全流程，已完整执行，含全部输出）
-├── data/
-│   ├── raw/                          # 原始数据（9个CSV，Kaggle下载）
-│   │   ├── olist_customers_dataset.csv
-│   │   ├── olist_geolocation_dataset.csv
-│   │   ├── olist_order_items_dataset.csv
-│   │   ├── olist_order_payments_dataset.csv
-│   │   ├── olist_order_reviews_dataset.csv
-│   │   ├── olist_orders_dataset.csv
-│   │   ├── olist_products_dataset.csv
-│   │   ├── olist_sellers_dataset.csv
-│   │   └── product_category_name_translation.csv
-│   └── clean/
-│       └── olist_master_clean.csv    # 清洗后主表（96,478行 × 41列，50.25MB）
-├── notebooks/                        # 分步笔记本（01清洗 / 02EDA / 03建模）
-├── scripts/
-│   ├── 01_load_and_clean.py          # Step1: 数据加载、七表连接、清洗
-│   ├── 02_eda_visuals.py             # Step2: EDA 可视化（fig01–fig03）
-│   ├── 03_business_models.py         # Step3: RFM/ABC/SARIMA 三大模型（fig04–fig06）
-│   ├── 04_dashboard.py               # Step4: Streamlit 大屏（备选方案）
-│   └── run_all.py                    # 一键复现脚本
-├── outputs/
-│   ├── dashboard.html                # ★ Pyecharts 交互大屏（928KB，浏览器直接打开）
-│   ├── figures/
-│   │   ├── fig01–fig06               # EDA + 模型核心图（6张，≥150dpi）
-│   │   ├── template/                 # ★ 5.2 模板复现图（T01–T12，12种图表类型）
-│   │   ├── models/                   # ★ 5.3 业务模型图（M01–M07，对应第4章）
-│   │   └── dash_*.png                # ★ 5.4 大屏 8 个 Tab 页截图
-│   └── tables/
-│       ├── rfm_summary.csv           # RFM 八分类汇总表
-│       └── abc_classification.csv    # ABC 分类结果表
-├── docs/
-│   └── 期末论文核心内容.md
-├── 期末论文_基于Olist电商数据的用户价值与履约时效分析.docx
-├── 《商业数据分析》期末大作业_成品.docx   # ★ 最终提交版（含31张图表）
-├── requirements.txt
-└── README.md                         # 本文件
+Olist_Business_Analysis/              # 项目根目录
+├── Olist_Business_Analysis.ipynb     # 核心分析笔记本（含代码、图表与业务解读）
+├── run_all.py                        # 一键复现入口脚本（由 Notebook 导出）
+├── requirements.txt                  # Python 依赖库列表
+├── README.md                         # 项目简介、数据来源、复现步骤与图表索引
+├── 《商业数据分析》期末大作业.docx     # 最终报告文档
+│
+├── data/                             # 数据文件夹
+│   ├── raw/                          # 9张原始 CSV 表
+│   └── clean/                        # 清洗后的主表 (olist_master_clean.csv)
+│
+├── outputs/                          # 输出结果文件夹
+│   ├── figures/                      # 自动生成的分析图表
+│   │   ├── fig01-fig09 (业务模型图)
+│   │   └── template/T01-T12 (12种可视化模板复现)
+│   └── tables/                       # RFM/ABC 结果表 (CSV)
+│
+├── scripts/                          # 辅助脚本与静态资源
+│   ├── run_all.py                    # 一键复现入口
+│   └── echarts.min.js                # 大屏所需的 ECharts 库文件
+│
+└── docs/                             # 文档说明
 ```
 
 ---
