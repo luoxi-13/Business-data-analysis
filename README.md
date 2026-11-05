@@ -6,7 +6,7 @@
 
 ---
 
-## 先看结论
+## 结论
 
 **客户分层很清楚，但高价值的人太少。** 93,358 个客户里，复购频次的中位数是 1——绝大多数人只买过一次。消费金额高于中位数的那批客户撑起了大部分销售额：其中人数占 24.1% 的"重要发展客户"贡献 38.2%，"重要挽留客户"再贡献 37.1%。而平均消费 R$343.41（约为平台平均客单价的两倍）的重要价值客户只有 1,379 人，占 1.5%，销售额占 3.1%。不是没有高价值客户，是高价值客户太少、还几乎不回头。
 
@@ -30,7 +30,8 @@
 
 清洗以订单主表为核心做七表左连接，只保留 `order_status = delivered`；缺失评分填 0、类别填 unknown、产品属性取中位数；配送时长为负或超过 90 天的记录剔除。结果导出为 `data/clean/olist_master_clean.csv`，后面所有图和模型都从这一份主表算起。
 
-> 仓库里**不含**这两个目录下的 CSV（原始表 121 MB、清洗表 51 MB，GitHub 收不了），拉下来后按「[数据文件没传上来](#数据文件没传上来)」一节补上即可，清洗表会自动重新生成。
+> 仓库根目录已上传打包好的数据集 [data.zip](https://github.com/luoxi-13/Business-data-analysis/raw/master/data.zip)（约 65 MB）。
+请下载并解压至 `data` 文件夹（原始表较大，GitHub 无法直接预览 CSV）。运行代码后，清洗表会自动重新生成。
 
 ---
 
@@ -233,16 +234,21 @@ Olist_Business_Analysis/                # 项目根目录
 └── docs/                               # 文档说明（预留，放答辩提纲、补充材料）
 ```
 
-## 数据文件没传上来
+## 数据文件说明
 
-`data/` 下的 CSV 全部没进 Git，不是漏了，是放不上去：
+由于 GitHub 对单文件大小和仓库体积有限制，`data/` 目录下的原始 CSV 文件未直接上传，而是打包成了 `data.zip` 放在仓库根目录。
+
+👉 **点击下载数据集**：[data.zip (master 分支)](https://github.com/luoxi-13/Business-data-analysis/raw/master/data.zip)
+
+### 数据目录结构
+下载并解压 `data.zip` 到项目根目录后，结构如下：
 
 | 目录 | 内容 | 体积 |
-|---|---|---|
-| `data/raw/` | 9 张原始表，最大的是 `olist_geolocation_dataset.csv`（61 MB） | 121 MB |
+| :--- | :--- | :--- |
+| `data/raw/` | 9 张原始表，最大的是 `olist_geolocation_dataset.csv` (61 MB) | 121 MB |
 | `data/clean/` | 清洗后的主表 `olist_master_clean.csv` | 51 MB |
 
-单文件超过 100 MB 会被 GitHub 直接拒收，仓库总体积超过 1 GB 也会被警告，全部传上去还会让 clone 变得极慢。所以 `.gitignore` 里排掉了 `data/raw/*.csv` 和 `data/clean/*.csv`，只留 `.gitkeep` 占位，目录结构仍然完整。
+> **注意**：解压后只需保留 `data/raw/` 中的原始表即可。运行 `run_all.py` 或 Jupyter Notebook 后，程序会自动清洗数据并生成 `data/clean/` 目录下的文件。
 
 **拿到数据只要两步**：
 
