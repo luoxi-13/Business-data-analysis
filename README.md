@@ -10,8 +10,6 @@
 
 浏览器里直接跑，能切年份、点州下钻、拖时间窗，不用装环境、不用下数据。本机看就双击 `outputs/dashboard.html`（ECharts 已内联，断网也能开）。
 
-> 链接第一次点开若是 404，按文末「在 GitHub 上打开交互大屏」开一次 Pages 就行，设置一次以后一直有效。
-
 ---
 
 ## 先看结论
@@ -284,37 +282,6 @@ pip install -r requirements.txt
 
 依赖：pandas、numpy、matplotlib、seaborn、statsmodels、pyecharts，Python 3.10 以上。中文字体依赖系统的 SimHei 或 Microsoft YaHei，Linux 上要单独装字体，否则图上全是方块。
 
-## 在 GitHub 上打开交互大屏（设置一次，以后一直有效）
-
-在线地址是 **https://luoxi-13.github.io/Business-data-analysis/**，这是 GitHub Pages 给本仓库分配的站点。大屏文件已经放进 `docs/index.html`，只差把 Pages 打开：
-
-1. 打开仓库 → **Settings** → 左侧 **Pages**；
-2. **Build and deployment** 的 Source 选 **Deploy from a branch**；
-3. Branch 选 **`main`**（仓库默认分支就是 main），目录选 **`/docs`**，点 **Save**；
-4. 等 1–2 分钟，再点 README 顶部的链接就能进。之后每次 push 会自动重新发布。
-
-仓库需要是 **Public**，私有仓库的 Pages 要付费版。
-
-把这些文件推上去。仓库默认分支是 `main`，本地如果还停在 `master`，先切过去（`git checkout main`，本地没有就 `git checkout -b main origin/main`）——推错分支的话 GitHub 首页显示的还是旧 README，等于没改：
-
-```bash
-git add .
-git commit -m "加入在线交互大屏"
-git push origin main
-```
-
-如果你之前在 GitHub 网页上改过 README，push 被拒绝时先 `git pull --rebase origin main`，冲突处保留本地这份（已经把线上新增的 data.zip 说明合进来了），再推一次。
-
-**大屏改版之后**，笔记本只会更新 `outputs/dashboard.html`，在线版要手动同步：
-
-```bash
-cp outputs/dashboard.html docs/index.html
-git add docs/index.html && git commit -m "同步大屏" && git push origin main
-```
-
-Pages 还没开、又想马上给别人看，可以先用这个临时预览地址（本仓库默认分支是 `main`）：
-https://htmlpreview.github.io/?https://github.com/luoxi-13/Business-data-analysis/blob/main/outputs/dashboard.html
-它加载 2 MB 的页面偶尔会不全，正式场合还是用 Pages。
 
 ## 两点说明
 
